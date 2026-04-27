@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AR Dragon – Marcador Hiro</title>
+
+  <!--
+    ============================================================
+    DEPENDENCIAS EXTERNAS
+    ------------------------------------------------------------
+    1. A-Frame: motor de realidad virtual/aumentada basado en
+       Three.js y Web Components. Versión 1.4.2.
+    2. AR.js (componente para A-Frame): biblioteca que detecta
+       marcadores fiduciales (como Hiro) usando la cámara del
+       dispositivo. Versión 3.4.5.
+    ============================================================
+  -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    /* --------------------------------------------------------
+       Eliminamos márgenes y ocultamos barras de desplazamiento
+       para que el canvas ocupe toda la pantalla.
+    -------------------------------------------------------- */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      overflow: hidden;
+      background: #000;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* --------------------------------------------------------
+       Panel de instrucciones superpuesto sobre la escena AR.
+       Se muestra en la esquina inferior y desaparece tras
+       unos segundos gracias a la animación CSS.
+    -------------------------------------------------------- */
+    #instrucciones {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      color: #e0e0e0;
+      padding: 14px 22px;
+      border-radius: 12px;
+      font-size: 13px;
+      text-align: center;
+      max-width: 320px;
+      line-height: 1.6;
+      /* Animación: visible 5 s, luego desvanece */
+      animation: fadeOut 1s ease 6s forwards;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    #instrucciones strong {
+      color: #7df9c2;
+      letter-spacing: 0.05em;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ========================================================
+       PANEL DE INSTRUCCIONES (se oculta automáticamente)
+  ======================================================== -->
+  <div id="instrucciones">
+    📷 Apunta la cámara al marcador<br>
+    <strong>HIRO</strong> para ver el dragón 3D.<br>
+    <small>Asegúrate de tener buena iluminación.</small>
+  </div>
+
+  <!-- ========================================================
+       ESCENA A-FRAME CON AR.JS
+       ----------------------------------------------------
+       Atributos de <a-scene>:
+       · embedded          → elimina el canvas de VR a pantalla
+                             completa; necesario para AR en web.
+       · arjs              → activa el modo AR con AR.js.
+         · sourceType: webcam   → usa la cámara trasera.
+         · debugUIEnabled: false → oculta el panel de depuración
+                                   de AR.js en producción.
+         · detectionMode: mono_and_matrix → detecta marcadores
+                                            Hiro (patrón).
+  ======================================================== -->
+  <a-scene
+    embedded
+    arjs="sourceType: webcam;
+          debugUIEnabled: false;
+          detectionMode: mono_and_matrix;"
+    renderer="logarithmicDepthBuffer: true; antialias: true;"
+    vr-mode-ui="enabled: false"
+  >
+
+    <!-- ----------------------------------------------------
+         CÁMARA AR
+         a-marker-camera detecta el marcador y mueve la
+         cámara virtual de acuerdo a su posición real.
+         preset="hiro" → usa el patrón Hiro integrado en AR.js.
+    ---------------------------------------------------- -->
+    <a-marker-camera preset="hiro"></a-marker-camera>
+
+    <!-- ----------------------------------------------------
+         MARCADOR HIRO
+         Todo lo que esté dentro de <a-marker> se renderiza
+         encima del marcador físico cuando es detectado.
+         preset="hiro" → patrón fiducial estándar de AR.js.
+    ---------------------------------------------------- -->
+    <a-marker preset="hiro">
+
+      <!--
+        MODELO 3D – DRAGÓN LOW POLY
+        --------------------------------------------------
+        · src: ruta al archivo GLB. Debe estar en el mismo
+          directorio que este index.html (o en un servidor).
+        · position: coloca el modelo ligeramente elevado
+          sobre el marcador (eje Y = altura).
+        · scale: ajusta el tamaño del modelo al marcador.
+          Modifica estos valores si el modelo es muy grande
+          o muy pequeño.
+        · rotation: orientación inicial del modelo.
+        · animation: componente nativo de A-Frame que
+          rota el modelo 360° sobre el eje Y de forma
+          continua (loop) en 6 segundos.
+          - property: rotation   → qué propiedad animar.
+          - to: 0 360 0          → valor final (Y completa).
+          - loop: true           → repite indefinidamente.
+          - dur: 6000            → duración en milisegundos.
+          - easing: linear       → velocidad constante.
+      -->
+      <a-entity
+        gltf-model="url(low_poly_dragon_model.glb)"
+        position="0 0.5 0"
+        scale="0.5 0.5 0.5"
+        rotation="0 0 0"
+        animation="
+          property: rotation;
+          to:       0 360 0;
+          loop:     true;
+          dur:      6000;
+          easing:   linear;
+        "
+      ></a-entity>
+
+      <!--
+        LUZ AMBIENTAL
+        --------------------------------------------------
+        Iluminación suave para que el modelo sea visible
+        incluso en condiciones de poca luz ambiental real.
+        · ambient: luz uniforme sin sombras.
+        · directional: simula la luz solar con sombras.
+      -->
+      <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+      <a-light
+        type="directional"
+        color="#ffffff"
+        intensity="1.2"
+        position="1 3 2"
+      ></a-light>
+
+    </a-marker>
+
+  </a-scene>
+
+  <script>
+    /*
+      ========================================================
+      SCRIPT AUXILIAR
+      --------------------------------------------------------
+      Detecta cuándo el marcador Hiro entra y sale del campo
+      de visión para dar retroalimentación visual al usuario.
+      ========================================================
+    */
+
+    // Esperamos a que A-Frame inicialice la escena
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+
+      const marker      = document.querySelector('a-marker');
+      const instrucciones = document.getElementById('instrucciones');
+
+      // Evento: marcador detectado por la cámara
+      marker.addEventListener('markerFound', () => {
+        console.log('[AR] Marcador Hiro detectado ✅');
+        instrucciones.style.display = 'none'; // Oculta las instrucciones
+      });
+
+      // Evento: marcador perdido (fuera del encuadre)
+      marker.addEventListener('markerLost', () => {
+        console.log('[AR] Marcador Hiro perdido ❌');
+      });
+
+    });
+  </script>
+
+</body>
+</html>
